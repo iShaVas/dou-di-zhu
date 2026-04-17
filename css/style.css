@@ -453,9 +453,30 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 	justify-content: center;
 	gap: 12px;
 	padding: 16px;
+	padding-top: 8px;
 	background: var(--blue-darker);
 	border-radius: 12px;
 	min-height: 220px;
+	position: relative;
+}
+
+.kitty {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 8px;
+	background: var(--blue);
+	border-radius: 6px;
+	border: 1px dashed var(--yellow);
+}
+
+body#doudizhu-table[data-player-count="4"] #kitty {
+	display: none !important;
 }
 
 .phase-indicator {
@@ -498,17 +519,6 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 	border-radius: 4px;
 	box-shadow: var(--shadow);
 	background: white;
-}
-
-.kitty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
-	padding: 8px;
-	background: var(--blue);
-	border-radius: 6px;
-	border: 1px dashed var(--yellow);
 }
 
 .kitty-label {
