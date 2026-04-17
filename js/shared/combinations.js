@@ -23,12 +23,22 @@ export const COMBO = Object.freeze({
 	SUPER_ROCKET: "super_rocket",
 });
 
+// Dealt cards may carry a "#<n>" instance suffix disambiguating the two physical copies that
+// exist in a double deck (e.g. "4D#17", "sj#54"). Strip it before classifying the card; rule
+// logic compares by rank alone, so tagged and untagged codes are interchangeable.
+function baseCode(card) {
+	const hash = card.indexOf("#");
+	return hash === -1 ? card : card.slice(0, hash);
+}
+
 function isJoker(card) {
-	return card === "sj" || card === "bj";
+	const base = baseCode(card);
+	return base === "sj" || base === "bj";
 }
 
 function rankOf(card) {
-	return isJoker(card) ? card : card[0];
+	const base = baseCode(card);
+	return isJoker(base) ? base : base[0];
 }
 
 function rankOrder(card) {
@@ -68,8 +78,8 @@ export function detectCombination(cards, options = {}) {
 	const groups = groupByRank(sorted);
 	const ranksPresent = Object.keys(groups);
 	const counts = Object.values(groups).sort((a, b) => b - a);
-	const smallJokerCount = sorted.filter((c) => c === "sj").length;
-	const bigJokerCount = sorted.filter((c) => c === "bj").length;
+	const smallJokerCount = sorted.filter((c) => rankOf(c) === "sj").length;
+	const bigJokerCount = sorted.filter((c) => rankOf(c) === "bj").length;
 
 	if (mode === "double" && size === 4 && smallJokerCount === 2 && bigJokerCount === 2) {
 		return { type: COMBO.SUPER_ROCKET, rank: 0, size: 4, cards: sorted };

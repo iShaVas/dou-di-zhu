@@ -26,7 +26,7 @@
 
 			<label>
 				<span>Server (ws:// or wss://)</span>
-				<input id="ws-url-input" type="text" placeholder="ws://localhost:8787">
+				<input id="ws-url-input" type="text" placeholder="wss://dou-di-zhu-backend.onrender.com">
 			</label>
 
 			<label>
@@ -65,10 +65,9 @@
 		const seatInput = document.getElementById("seat-input");
 		const statusEl = document.getElementById("landing-status");
 
-		const defaultWsUrl = (() => {
-			const proto = location.protocol === "https:" ? "wss" : "ws";
-			return `${proto}://${location.hostname || "localhost"}:8787`;
-		})();
+		// Default to the hosted Render backend. Local dev can still override by typing
+		// ws://localhost:8787 into the field; the override is remembered in localStorage.
+		const defaultWsUrl = "wss://dou-di-zhu-backend.onrender.com";
 		wsInput.value = localStorage.getItem("doudizhu:wsUrl") || defaultWsUrl;
 		nameInput.value = localStorage.getItem("doudizhu:name") || "";
 

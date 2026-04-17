@@ -162,6 +162,9 @@ body#landing main {
 	padding: 10px 16px;
 	background: var(--blue-darker);
 	border-bottom: 1px solid var(--blue-lighter);
+	position: sticky;
+	top: 0;
+	z-index: 50;
 }
 
 .share-bar-label {
@@ -257,7 +260,6 @@ body#doudizhu-table {
 	grid-template-columns: 1fr 2fr 1fr;
 	gap: 12px;
 	padding: 16px;
-	min-height: 100dvh;
 }
 
 /* 3-player layout: only W and E opponents visible. */

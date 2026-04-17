@@ -57,7 +57,8 @@ Then open `http://localhost:5173` in your browser.
 
 ### 3. Play
 
-1. On the landing page, enter a name, confirm the WS URL (default `ws://localhost:8787`), and click
+1. On the landing page, enter a name, confirm the WS URL (default
+   `wss://dou-di-zhu-backend.onrender.com`; paste `ws://localhost:8787` instead for local dev), and click
    **Create table**. You land directly in the room at seat 0.
 2. Copy the link from the **share bar** at the top of the table page and send it to 2 – 3 more
    players. Each guest enters their name in the prompt, then takes a seat.

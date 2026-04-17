@@ -40,12 +40,11 @@ const opponentEls = {
 const urlParams = new URLSearchParams(globalThis.location.search);
 const tableId = urlParams.get("tableId") || "";
 const initialSeatIndex = parseOptionalInt(urlParams.get("seatIndex"));
+const DEFAULT_WS_URL = "wss://dou-di-zhu-backend.onrender.com";
 const WS_URL = (() => {
 	const p = urlParams.get("wsUrl");
 	if (p) return p;
-	const proto = location.protocol === "https:" ? "wss" : "ws";
-	const port = urlParams.get("wsPort") || "8787";
-	return `${proto}://${location.hostname || "localhost"}:${port}`;
+	return DEFAULT_WS_URL;
 })();
 const SESSION_STORAGE_KEY = `doudizhu:session:${tableId}`;
 const NAME_STORAGE_KEY = "doudizhu:name";

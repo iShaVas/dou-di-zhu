@@ -3,11 +3,14 @@
 import { sortHand } from "./combinations.js";
 
 export function cardSrc(cardCode) {
-	if (cardCode === "sj" || cardCode === "bj") {
-		return `cards/${cardCode}.svg`;
+	// Cards dealt by the server may carry a "#<n>" instance suffix (e.g. "4D#17"); the SVG asset
+	// is named by the base code alone.
+	const hash = cardCode.indexOf("#");
+	const base = hash === -1 ? cardCode : cardCode.slice(0, hash);
+	if (base === "sj" || base === "bj") {
+		return `cards/${base}.svg`;
 	}
-	// Existing face cards use uppercase rank+suit, e.g. "3H.svg".
-	return `cards/${cardCode.toUpperCase()}.svg`;
+	return `cards/${base.toUpperCase()}.svg`;
 }
 
 export function renderHand(handEl, cards, selectedSet, onToggle) {
