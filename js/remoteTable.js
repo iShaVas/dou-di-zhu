@@ -222,8 +222,8 @@ function placeOpponents(playersPublic, tableView) {
 		const idx = (myIdx + offset) % playerCount;
 		ordered.push(playersPublic.find((p) => p.seatIndex === idx));
 	}
-	// Assign to slots: 3P → [W, E] (two opponents flanking), 4P → [W, N, E].
-	const slotOrder = playerCount === 3 ? ["W", "E"] : ["W", "N", "E"];
+	// Assign to slots: 2P → [E] (single opponent), 3P → [W, E] (flanking), 4P → [W, N, E].
+	const slotOrder = playerCount === 4 ? ["W", "N", "E"] : playerCount === 3 ? ["W", "E"] : ["E"];
 	// Clear all
 	for (const key of ["N", "W", "E"]) {
 		clearOpponent(opponentEls[key]);

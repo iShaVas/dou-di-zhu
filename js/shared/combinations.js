@@ -71,7 +71,8 @@ function hasConsecutiveRanks(ranks) {
 }
 
 export function detectCombination(cards, options = {}) {
-	const mode = options.mode ?? "single";
+	// "pair" mode uses a single deck and the same combination rules as "single".
+	const mode = (options.mode === "pair" ? "single" : options.mode) ?? "single";
 	if (!Array.isArray(cards) || cards.length === 0) return null;
 	const sorted = sortByRank(cards);
 	const size = sorted.length;
