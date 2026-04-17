@@ -26,6 +26,7 @@ const claimBtn = document.getElementById("claim-button");
 const declineBtn = document.getElementById("decline-button");
 const playBtn = document.getElementById("play-button");
 const passBtn = document.getElementById("pass-button");
+const resetSelectionBtn = document.getElementById("reset-selection-button");
 const connectionStatusEl = document.getElementById("connection-status");
 const shareLinkEl = document.getElementById("share-link");
 const shareCopyBtn = document.getElementById("share-copy");
@@ -65,6 +66,7 @@ let cardPositions = new Map(); // code → {x, y}
 let cardZOrder = [];           // codes bottom→top; last entry = highest z
 let lastHandNumber = null;
 let dragState = null;          // { code, pointerId, offsetX, offsetY, hasMoved }
+let selectState = null;        // { pointerId, startX, startY, curX, curY }
 let socket = null;
 let reconnectDelayMs = 1000;
 let closedByClient = false;
@@ -129,12 +131,18 @@ function toggleCard(code) {
 	else selected.add(code);
 	refreshHandRender();
 	refreshPlayEnable();
+	refreshResetSelection();
 }
 
 function clearSelection() {
 	selected.clear();
 	refreshHandRender();
 	refreshPlayEnable();
+	refreshResetSelection();
+}
+
+function refreshResetSelection() {
+	resetSelectionBtn.disabled = selected.size === 0;
 }
 
 const CARD_W = 64;
@@ -179,13 +187,20 @@ function reconcilePositions(serverHand, handNumber) {
 	if (newCards.length > 0) defaultLayout(sortHand(newCards));
 }
 
+const selectRectEl = document.createElement("div");
+selectRectEl.className = "hand-select-rect";
+
 function refreshHandRender() {
 	if (!lastServerState) return;
 	renderHand(myHandEl, cardZOrder, cardPositions, selected);
+	myHandEl.appendChild(selectRectEl); // re-attach after innerHTML reset
 }
 
 function refreshPlayEnable() {
-	if (!lastServerState || !lastServerState.seat) {
+	if (!lastServerState?.seat) { playBtn.disabled = true; return; }
+	const state = lastServerState;
+	const me = state.seat;
+	if (state.table.phase !== "playing" || state.table.turnSeatIndex !== me.seatIndex) {
 		playBtn.disabled = true;
 		return;
 	}
@@ -260,6 +275,7 @@ function applyState(state) {
 
 	updateActionButtons(state);
 	refreshPlayEnable();
+	refreshResetSelection();
 }
 
 function placeOpponents(playersPublic, tableView) {
@@ -303,28 +319,22 @@ function placeOpponents(playersPublic, tableView) {
 function updateActionButtons(state) {
 	const { phase, turnSeatIndex, bidTurnSeatIndex, lastMove } = state.table;
 	const me = state.seat;
-	const myTurn = me && (turnSeatIndex === me.seatIndex || bidTurnSeatIndex === me.seatIndex);
+	const myPlayTurn = me && phase === "playing" && turnSeatIndex === me.seatIndex;
+	const myBidTurn = me && phase === "bidding" && bidTurnSeatIndex === me.seatIndex;
 
 	hide(readyBtn);
 	hide(claimBtn);
 	hide(declineBtn);
-	hidePlayPass(playBtn);
-	hidePlayPass(passBtn);
+	passBtn.disabled = !(myPlayTurn && !!lastMove);
 
 	if (phase === "waiting" || phase === "finished") {
 		const myPublic = state.table.playersPublic.find((p) => p.seatIndex === me?.seatIndex);
 		if (me && !myPublic?.ready) show(readyBtn);
 		return;
 	}
-	if (phase === "bidding" && myTurn) {
+	if (myBidTurn) {
 		show(claimBtn);
 		show(declineBtn);
-		return;
-	}
-	if (phase === "playing" && myTurn) {
-		showPlayPass(playBtn);
-		if (lastMove) showPlayPass(passBtn);
-		return;
 	}
 }
 
@@ -334,14 +344,6 @@ function show(btn) {
 
 function hide(btn) {
 	btn.classList.add("hidden");
-}
-
-function showPlayPass(btn) {
-	btn.classList.remove("btn-hidden");
-}
-
-function hidePlayPass(btn) {
-	btn.classList.add("btn-hidden");
 }
 
 /* ---------------- confirm dialog ---------------- */
@@ -450,6 +452,8 @@ function openSocket() {
 
 /* ---------------- button wiring ---------------- */
 
+resetSelectionBtn.addEventListener("click", clearSelection);
+
 readyBtn.addEventListener("click", () => {
 	sendSocketMessage({ type: "ready" });
 	hide(readyBtn);
@@ -475,53 +479,116 @@ globalThis.addEventListener("beforeunload", () => {
 	socket?.close();
 });
 
-/* ---------------- hand drag (pointer events) ---------------- */
+/* ---------------- hand pointer events (drag cards + rubber-band select) ---------------- */
 
-myHandEl.addEventListener("pointerdown", (ev) => {
+myAreaEl.addEventListener("pointerdown", (ev) => {
 	const btn = ev.target.closest(".hand-card");
-	if (!btn) return;
 	ev.preventDefault();
-	const code = btn.dataset.card;
+	myAreaEl.setPointerCapture(ev.pointerId);
 	const rect = myHandEl.getBoundingClientRect();
-	const pos = cardPositions.get(code) || { x: 0, y: 0 };
-	// Capture on the container so it survives innerHTML re-renders of children
-	myHandEl.setPointerCapture(ev.pointerId);
-	// Bring card to front
-	cardZOrder = cardZOrder.filter((c) => c !== code);
-	cardZOrder.push(code);
-	btn.style.zIndex = String(cardZOrder.length);
-	dragState = {
-		code,
-		pointerId: ev.pointerId,
-		offsetX: ev.clientX - rect.left - pos.x,
-		offsetY: ev.clientY - rect.top - pos.y,
-		hasMoved: false,
-	};
-});
 
-myHandEl.addEventListener("pointermove", (ev) => {
-	if (!dragState || dragState.pointerId !== ev.pointerId) return;
-	const rect = myHandEl.getBoundingClientRect();
-	const x = ev.clientX - rect.left - dragState.offsetX;
-	const y = ev.clientY - rect.top - dragState.offsetY;
-	if (!dragState.hasMoved) {
-		const oldPos = cardPositions.get(dragState.code) ?? { x: 0, y: 0 };
-		if (Math.abs(x - oldPos.x) < 4 && Math.abs(y - oldPos.y) < 4) return;
-		dragState.hasMoved = true;
+	if (btn) {
+		// Card drag — if clicked card is selected, drag whole selection together
+		const code = btn.dataset.card;
+		const codes = (selected.has(code) && selected.size > 1) ? [...selected] : [code];
+		// Bring all dragged cards to front, preserving their relative z-order
+		const draggingSet = new Set(codes);
+		const rest = cardZOrder.filter((c) => !draggingSet.has(c));
+		const front = cardZOrder.filter((c) => draggingSet.has(c));
+		cardZOrder = [...rest, ...front];
+		front.forEach((c, i) => {
+			const el = myHandEl.querySelector(`[data-card="${CSS.escape(c)}"]`);
+			if (el) el.style.zIndex = String(rest.length + i + 1);
+		});
+		const ptrX = ev.clientX - rect.left;
+		const ptrY = ev.clientY - rect.top;
+		dragState = {
+			primaryCode: code,
+			codes,
+			pointerId: ev.pointerId,
+			startX: ptrX,
+			startY: ptrY,
+			startPositions: new Map(codes.map((c) => [c, { ...(cardPositions.get(c) ?? { x: 0, y: 0 }) }])),
+			hasMoved: false,
+		};
+	} else {
+		// Rubber-band selection
+		const x = ev.clientX - rect.left;
+		const y = ev.clientY - rect.top;
+		selectState = { pointerId: ev.pointerId, startX: x, startY: y, curX: x, curY: y };
+		selectRectEl.style.display = "none";
 	}
-	cardPositions.set(dragState.code, { x, y });
-	const el = myHandEl.querySelector(`[data-card="${CSS.escape(dragState.code)}"]`);
-	if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
 });
 
-const endDrag = (ev) => {
-	if (!dragState || dragState.pointerId !== ev.pointerId) return;
-	const { code, hasMoved } = dragState;
-	dragState = null;
-	if (!hasMoved) toggleCard(code);
+myAreaEl.addEventListener("pointermove", (ev) => {
+	const rect = myHandEl.getBoundingClientRect();
+
+	if (dragState && dragState.pointerId === ev.pointerId) {
+		const dx = ev.clientX - rect.left - dragState.startX;
+		const dy = ev.clientY - rect.top - dragState.startY;
+		if (!dragState.hasMoved) {
+			if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+			dragState.hasMoved = true;
+		}
+		for (const c of dragState.codes) {
+			const start = dragState.startPositions.get(c);
+			const x = start.x + dx;
+			const y = start.y + dy;
+			cardPositions.set(c, { x, y });
+			const el = myHandEl.querySelector(`[data-card="${CSS.escape(c)}"]`);
+			if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
+		}
+		return;
+	}
+
+	if (selectState && selectState.pointerId === ev.pointerId) {
+		selectState.curX = ev.clientX - rect.left;
+		selectState.curY = ev.clientY - rect.top;
+		const l = Math.min(selectState.startX, selectState.curX);
+		const t = Math.min(selectState.startY, selectState.curY);
+		const w = Math.abs(selectState.curX - selectState.startX);
+		const h = Math.abs(selectState.curY - selectState.startY);
+		if (w > 4 || h > 4) {
+			selectRectEl.style.display = "block";
+			selectRectEl.style.left = `${l}px`;
+			selectRectEl.style.top = `${t}px`;
+			selectRectEl.style.width = `${w}px`;
+			selectRectEl.style.height = `${h}px`;
+		}
+	}
+});
+
+const endPointer = (ev) => {
+	if (dragState && dragState.pointerId === ev.pointerId) {
+		const { primaryCode, hasMoved } = dragState;
+		dragState = null;
+		if (!hasMoved) toggleCard(primaryCode);
+		return;
+	}
+	if (selectState && selectState.pointerId === ev.pointerId) {
+		const { startX, startY, curX, curY } = selectState;
+		selectState = null;
+		selectRectEl.style.display = "none";
+		const l = Math.min(startX, curX);
+		const t = Math.min(startY, curY);
+		const r = Math.max(startX, curX);
+		const b = Math.max(startY, curY);
+		if (r - l < 4 && b - t < 4) return; // treat as a miss-click, no change
+		const cw = cardWidth();
+		const ch = window.innerWidth <= 768 ? 62 : 90;
+		selected.clear();
+		for (const [code, pos] of cardPositions) {
+			if (pos.x < r && pos.x + cw > l && pos.y < b && pos.y + ch > t) {
+				selected.add(code);
+			}
+		}
+		refreshHandRender();
+		refreshPlayEnable();
+		refreshResetSelection();
+	}
 };
-myHandEl.addEventListener("pointerup", endDrag);
-myHandEl.addEventListener("pointercancel", endDrag);
+myAreaEl.addEventListener("pointerup", endPointer);
+myAreaEl.addEventListener("pointercancel", endPointer);
 
 /* ---------------- share link ---------------- */
 
