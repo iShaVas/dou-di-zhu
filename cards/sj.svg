@@ -1,0 +1,8 @@
+<svg height="3.5in" preserveAspectRatio="none" viewBox="-120 -168 240 336" width="2.5in" xmlns="http://www.w3.org/2000/svg">
+	<rect fill="#fff" height="335" rx="12" stroke="#000" width="239" x="-119.5" y="-167.5"/>
+	<text x="-100" y="-130" font-family="serif" font-size="28" font-weight="bold" fill="#000">J</text>
+	<text x="-100" y="-95" font-family="serif" font-size="20" fill="#000">sm</text>
+	<text x="0" y="10" font-family="serif" font-size="48" font-weight="bold" fill="#000" text-anchor="middle">JOKER</text>
+	<text x="0" y="50" font-family="serif" font-size="24" fill="#555" text-anchor="middle">small</text>
+	<text x="100" y="150" font-family="serif" font-size="28" font-weight="bold" fill="#000" transform="rotate(180 100 150)">J</text>
+</svg>
