@@ -1,7 +1,5 @@
 // Rendering helpers for the Dou Di Zhu table. Pure DOM, given state + refs.
 
-import { sortHand } from "./combinations.js";
-
 export function cardSrc(cardCode) {
 	// Cards dealt by the server may carry a "#<n>" instance suffix (e.g. "4D#17"); the SVG asset
 	// is named by the base code alone.
@@ -13,20 +11,24 @@ export function cardSrc(cardCode) {
 	return `cards/${base.toUpperCase()}.svg`;
 }
 
-export function renderHand(handEl, cards, selectedSet, onToggle) {
-	const sorted = sortHand(cards);
+export function renderHand(handEl, cardZOrder, cardPositions, selectedSet) {
 	handEl.innerHTML = "";
-	for (const code of sorted) {
+	for (let zi = 0; zi < cardZOrder.length; zi++) {
+		const code = cardZOrder[zi];
+		const pos = cardPositions.get(code);
+		if (!pos) continue;
 		const btn = document.createElement("button");
 		btn.type = "button";
 		btn.className = "hand-card";
 		btn.dataset.card = code;
+		btn.style.left = `${pos.x}px`;
+		btn.style.top = `${pos.y}px`;
+		btn.style.zIndex = String(zi + 1);
 		if (selectedSet.has(code)) btn.classList.add("selected");
 		const img = document.createElement("img");
 		img.src = cardSrc(code);
 		img.alt = code;
 		btn.appendChild(img);
-		btn.addEventListener("click", () => onToggle(code));
 		handEl.appendChild(btn);
 	}
 }

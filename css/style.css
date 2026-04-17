@@ -572,20 +572,26 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 }
 
 .my-hand {
-	display: flex;
-	gap: 4px;
-	flex-wrap: wrap;
-	justify-content: center;
-	min-height: 120px;
+	position: relative;
+	width: 100%;
+	height: 140px;
+	overflow: visible;
 }
 
 .hand-card {
+	position: absolute;
 	padding: 0;
 	background: transparent;
 	border: 2px solid transparent;
 	border-radius: 6px;
-	cursor: pointer;
-	transition: transform 0.15s ease, border-color 0.15s ease;
+	cursor: grab;
+	transition: transform 0.12s ease, border-color 0.12s ease;
+	touch-action: none;
+	user-select: none;
+}
+
+.hand-card:active {
+	cursor: grabbing;
 }
 
 .hand-card img {
@@ -598,8 +604,10 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 }
 
 .hand-card.selected {
-	transform: translateY(-12px);
-	border-color: var(--yellow);
+	transform: translateY(-14px);
+	border-color: #ff6a00;
+	border-width: 3px;
+	box-shadow: 0 0 0 2px #ff6a00;
 }
 
 .hand-card:hover:not(.selected) {
@@ -676,6 +684,10 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 	.hand-card img {
 		width: 44px;
 		height: 62px;
+	}
+
+	.my-hand {
+		height: 100px;
 	}
 
 	.played-card {

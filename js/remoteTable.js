@@ -1,7 +1,7 @@
 // Dou Di Zhu client runtime: WebSocket client that joins a seat, renders hand + center table,
 // and emits claim_landlord / decline_landlord / play_cards / pass.
 
-import { canBeat, detectCombination } from "./shared/combinations.js";
+import { canBeat, detectCombination, sortHand } from "./shared/combinations.js";
 import {
 	clearOpponent,
 	renderHand,
@@ -61,6 +61,10 @@ let currentTurnToken = null;
 let currentMode = "single";
 let lastServerState = null;
 const selected = new Set();
+let cardPositions = new Map(); // code → {x, y}
+let cardZOrder = [];           // codes bottom→top; last entry = highest z
+let lastHandNumber = null;
+let dragState = null;          // { code, pointerId, offsetX, offsetY, hasMoved }
 let socket = null;
 let reconnectDelayMs = 1000;
 let closedByClient = false;
@@ -133,10 +137,51 @@ function clearSelection() {
 	refreshPlayEnable();
 }
 
+const CARD_W = 64;
+const CARD_W_MOBILE = 44;
+
+function cardWidth() {
+	return window.innerWidth <= 768 ? CARD_W_MOBILE : CARD_W;
+}
+
+function defaultLayout(sortedCards) {
+	const cw = cardWidth();
+	const n = sortedCards.length;
+	if (n === 0) return;
+	const containerW = myHandEl.clientWidth || 800;
+	const gap = n > 1 ? Math.min(cw + 20, (containerW - cw) / (n - 1)) : 0;
+	const totalW = cw + (n - 1) * gap;
+	const startX = Math.max(0, (containerW - totalW) / 2);
+	sortedCards.forEach((code, i) => {
+		cardPositions.set(code, { x: startX + i * gap, y: 0 });
+		if (!cardZOrder.includes(code)) cardZOrder.push(code);
+	});
+}
+
+function reconcilePositions(serverHand, handNumber) {
+	if (handNumber !== lastHandNumber) {
+		lastHandNumber = handNumber;
+		cardPositions = new Map();
+		cardZOrder = [];
+		defaultLayout(sortHand(serverHand));
+		return;
+	}
+	// Remove cards no longer in hand
+	const serverSet = new Set(serverHand);
+	for (const code of [...cardPositions.keys()]) {
+		if (!serverSet.has(code)) {
+			cardPositions.delete(code);
+			cardZOrder = cardZOrder.filter((c) => c !== code);
+		}
+	}
+	// Add newly dealt cards (shouldn't happen mid-hand, but handle it)
+	const newCards = serverHand.filter((c) => !cardPositions.has(c));
+	if (newCards.length > 0) defaultLayout(sortHand(newCards));
+}
+
 function refreshHandRender() {
 	if (!lastServerState) return;
-	const hand = lastServerState.seat?.hand ?? [];
-	renderHand(myHandEl, hand, selected, toggleCard);
+	renderHand(myHandEl, cardZOrder, cardPositions, selected);
 }
 
 function refreshPlayEnable() {
@@ -191,7 +236,7 @@ function applyState(state) {
 			? "— Farmer"
 			: "";
 		meScoreEl.textContent = `(score ${myPublic?.score ?? 0})`;
-		renderHand(myHandEl, me.hand, selected, toggleCard);
+		reconcilePositions(me.hand, state.table.handNumber);
 		const myTurn = state.table.turnSeatIndex === me.seatIndex ||
 			state.table.bidTurnSeatIndex === me.seatIndex;
 		myAreaEl?.classList.toggle("turn", myTurn);
@@ -207,10 +252,10 @@ function applyState(state) {
 	phaseEl.textContent = `Phase: ${state.table.phase} · Hand ${state.table.handNumber}`;
 	currentTurnToken = me?.turnToken ?? null;
 
-	// Clean up any stale selections that aren't in the hand anymore.
 	if (me) {
 		const handSet = new Set(me.hand);
 		for (const c of Array.from(selected)) if (!handSet.has(c)) selected.delete(c);
+		refreshHandRender();
 	}
 
 	updateActionButtons(state);
@@ -429,6 +474,54 @@ globalThis.addEventListener("beforeunload", () => {
 	closedByClient = true;
 	socket?.close();
 });
+
+/* ---------------- hand drag (pointer events) ---------------- */
+
+myHandEl.addEventListener("pointerdown", (ev) => {
+	const btn = ev.target.closest(".hand-card");
+	if (!btn) return;
+	ev.preventDefault();
+	const code = btn.dataset.card;
+	const rect = myHandEl.getBoundingClientRect();
+	const pos = cardPositions.get(code) || { x: 0, y: 0 };
+	// Capture on the container so it survives innerHTML re-renders of children
+	myHandEl.setPointerCapture(ev.pointerId);
+	// Bring card to front
+	cardZOrder = cardZOrder.filter((c) => c !== code);
+	cardZOrder.push(code);
+	btn.style.zIndex = String(cardZOrder.length);
+	dragState = {
+		code,
+		pointerId: ev.pointerId,
+		offsetX: ev.clientX - rect.left - pos.x,
+		offsetY: ev.clientY - rect.top - pos.y,
+		hasMoved: false,
+	};
+});
+
+myHandEl.addEventListener("pointermove", (ev) => {
+	if (!dragState || dragState.pointerId !== ev.pointerId) return;
+	const rect = myHandEl.getBoundingClientRect();
+	const x = ev.clientX - rect.left - dragState.offsetX;
+	const y = ev.clientY - rect.top - dragState.offsetY;
+	if (!dragState.hasMoved) {
+		const oldPos = cardPositions.get(dragState.code) ?? { x: 0, y: 0 };
+		if (Math.abs(x - oldPos.x) < 4 && Math.abs(y - oldPos.y) < 4) return;
+		dragState.hasMoved = true;
+	}
+	cardPositions.set(dragState.code, { x, y });
+	const el = myHandEl.querySelector(`[data-card="${CSS.escape(dragState.code)}"]`);
+	if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
+});
+
+const endDrag = (ev) => {
+	if (!dragState || dragState.pointerId !== ev.pointerId) return;
+	const { code, hasMoved } = dragState;
+	dragState = null;
+	if (!hasMoved) toggleCard(code);
+};
+myHandEl.addEventListener("pointerup", endDrag);
+myHandEl.addEventListener("pointercancel", endDrag);
 
 /* ---------------- share link ---------------- */
 
