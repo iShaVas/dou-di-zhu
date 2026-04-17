@@ -208,6 +208,56 @@ body#landing main {
 }
 
 /* =========================
+   CONFIRM DIALOG
+   ========================= */
+
+.confirm-dialog {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 200;
+}
+
+.confirm-dialog-box {
+	background: var(--blue-darker);
+	border-radius: 10px;
+	padding: 20px 24px;
+	max-width: 320px;
+	width: 90%;
+	display: grid;
+	gap: 16px;
+	box-shadow: var(--shadow-strong);
+}
+
+.confirm-dialog-box p {
+	margin: 0;
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+.confirm-dialog-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+}
+
+#confirm-dialog-yes {
+	background: var(--red);
+}
+
+#confirm-dialog-no {
+	background: var(--blue-lighter);
+	color: var(--font-color);
+}
+
+#confirm-dialog-no:hover:not(:disabled) {
+	background: var(--blue-lightest);
+}
+
+/* =========================
    NAME PROMPT
    ========================= */
 
@@ -376,6 +426,34 @@ body#doudizhu-table[data-player-count="2"] .ddz-table {
 .opponent-score {
 	font-size: 13px;
 	color: var(--blue-lightest);
+}
+
+.opponent-offline {
+	font-size: 10px;
+	font-weight: bold;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--blue-lightest);
+	background: var(--blue);
+	padding: 2px 7px;
+	border-radius: 4px;
+}
+
+.opponent.offline {
+	opacity: 0.6;
+}
+
+.kick-button {
+	font-size: 11px;
+	padding: 4px 10px;
+	font-weight: normal;
+	background: var(--red);
+	opacity: 0.75;
+}
+
+.kick-button:hover:not(:disabled) {
+	background: var(--red);
+	opacity: 1;
 }
 
 .table-center {

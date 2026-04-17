@@ -29,6 +29,10 @@ const passBtn = document.getElementById("pass-button");
 const connectionStatusEl = document.getElementById("connection-status");
 const shareLinkEl = document.getElementById("share-link");
 const shareCopyBtn = document.getElementById("share-copy");
+const confirmDialogEl = document.getElementById("confirm-dialog");
+const confirmMessageEl = document.getElementById("confirm-dialog-message");
+const confirmYesBtn = document.getElementById("confirm-dialog-yes");
+const confirmNoBtn = document.getElementById("confirm-dialog-no");
 const namePromptEl = document.getElementById("name-prompt");
 const namePromptInput = document.getElementById("name-prompt-input");
 const namePromptSubmit = document.getElementById("name-prompt-submit");
@@ -229,16 +233,24 @@ function placeOpponents(playersPublic, tableView) {
 		clearOpponent(opponentEls[key]);
 		opponentEls[key].classList.add("hidden");
 	}
+	const isHost = mySeatIndex === 0;
 	for (let i = 0; i < ordered.length; i++) {
 		const key = slotOrder[i];
 		const el = opponentEls[key];
 		if (!el || !ordered[i]) continue;
 		el.classList.remove("hidden");
-		const isTurn = tableView.turnSeatIndex === ordered[i].seatIndex ||
-			tableView.bidTurnSeatIndex === ordered[i].seatIndex;
-		renderOpponent(el, ordered[i], {
+		const opponent = ordered[i];
+		const isTurn = tableView.turnSeatIndex === opponent.seatIndex ||
+			tableView.bidTurnSeatIndex === opponent.seatIndex;
+		renderOpponent(el, opponent, {
 			isTurn,
 			landlordSeatIndex: tableView.landlordSeatIndex,
+			connected: opponent.connected ?? true,
+			canKick: isHost,
+			onKick: (seatIndex, name) => showConfirmDialog(
+				`Kick ${name} from the table?`,
+				() => sendSocketMessage({ type: "kick_player", seatIndex }),
+			),
 		});
 	}
 }
@@ -287,6 +299,22 @@ function hidePlayPass(btn) {
 	btn.classList.add("btn-hidden");
 }
 
+/* ---------------- confirm dialog ---------------- */
+
+function showConfirmDialog(message, onConfirm) {
+	confirmMessageEl.textContent = message;
+	confirmDialogEl.classList.remove("hidden");
+	const cleanup = () => {
+		confirmDialogEl.classList.add("hidden");
+		confirmYesBtn.removeEventListener("click", yes);
+		confirmNoBtn.removeEventListener("click", no);
+	};
+	const yes = () => { cleanup(); onConfirm(); };
+	const no = () => cleanup();
+	confirmYesBtn.addEventListener("click", yes);
+	confirmNoBtn.addEventListener("click", no);
+}
+
 /* ---------------- socket lifecycle ---------------- */
 
 function handleServerMessage(msg) {
@@ -307,9 +335,16 @@ function handleServerMessage(msg) {
 			return;
 		case "error":
 			console.warn("server error", msg.code, msg.message);
-			if (msg.code === "invalid_session" || msg.code === "seat_taken") {
+			if (msg.code === "invalid_session" || msg.code === "seat_taken" || msg.code === "kicked") {
 				writeStoredToken(null);
 				sessionToken = null;
+			}
+			if (msg.code === "kicked") {
+				closedByClient = true;
+				socket?.close();
+				notifEl.textContent = "You were kicked from the table.";
+				setStatus("", "");
+				return;
 			}
 			notifEl.textContent = `Server: ${msg.message ?? msg.code}`;
 			return;
