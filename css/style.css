@@ -32,6 +32,12 @@ body {
 	display: none !important;
 }
 
+/* Reserves layout space but makes element invisible/non-interactive */
+.btn-hidden {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
 button {
 	font: inherit;
 	padding: 10px 14px;
@@ -514,6 +520,7 @@ body#doudizhu-table[data-player-count="3"] .ddz-table {
 	gap: 10px;
 	flex-wrap: wrap;
 	justify-content: center;
+	align-items: center;
 }
 
 .action-buttons #pass-button,
@@ -527,15 +534,28 @@ body#doudizhu-table[data-player-count="3"] .ddz-table {
 	background: var(--blue-lightest);
 }
 
+.action-buttons #play-button {
+	padding: 14px 32px;
+	font-size: 18px;
+}
+
+.action-buttons #pass-button {
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: normal;
+}
+
 /* =========================
    CONNECTION STATUS
    ========================= */
 
 .connection-status {
-	font-size: 13px;
-	padding: 6px 10px;
-	border-radius: 4px;
+	font-size: 12px;
+	padding: 4px 10px;
+	border-radius: 10px;
 	background: var(--blue);
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .connection-status[data-variant="warn"] {

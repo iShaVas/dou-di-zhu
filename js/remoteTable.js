@@ -251,8 +251,8 @@ function updateActionButtons(state) {
 	hide(readyBtn);
 	hide(claimBtn);
 	hide(declineBtn);
-	hide(playBtn);
-	hide(passBtn);
+	hidePlayPass(playBtn);
+	hidePlayPass(passBtn);
 
 	if (phase === "waiting" || phase === "finished") {
 		const myPublic = state.table.playersPublic.find((p) => p.seatIndex === me?.seatIndex);
@@ -265,8 +265,8 @@ function updateActionButtons(state) {
 		return;
 	}
 	if (phase === "playing" && myTurn) {
-		show(playBtn);
-		if (lastMove) show(passBtn);
+		showPlayPass(playBtn);
+		if (lastMove) showPlayPass(passBtn);
 		return;
 	}
 }
@@ -277,6 +277,14 @@ function show(btn) {
 
 function hide(btn) {
 	btn.classList.add("hidden");
+}
+
+function showPlayPass(btn) {
+	btn.classList.remove("btn-hidden");
+}
+
+function hidePlayPass(btn) {
+	btn.classList.add("btn-hidden");
 }
 
 /* ---------------- socket lifecycle ---------------- */
