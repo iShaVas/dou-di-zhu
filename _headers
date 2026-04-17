@@ -1,2 +1,14 @@
-/*
-  Cache-Control: no-cache
+/*.html
+  Cache-Control: no-store
+
+/*.js
+  Cache-Control: no-store
+
+/*.css
+  Cache-Control: no-store
+
+/cards/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable

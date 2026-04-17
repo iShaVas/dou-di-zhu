@@ -1,6 +1,7 @@
 // Dou Di Zhu client runtime: WebSocket client that joins a seat, renders hand + center table,
 // and emits claim_landlord / decline_landlord / play_cards / pass.
 
+import { initServiceWorker } from "./serviceWorkerRegistration.js";
 import { canBeat, detectCombination, sortHand } from "./shared/combinations.js";
 import {
 	clearOpponent,
@@ -45,7 +46,6 @@ const opponentEls = {
 
 const urlParams = new URLSearchParams(globalThis.location.search);
 const tableId = urlParams.get("tableId") || "";
-const initialSeatIndex = parseOptionalInt(urlParams.get("seatIndex"));
 const DEFAULT_WS_URL = "wss://dou-di-zhu-backend.onrender.com";
 const WS_URL = (() => {
 	const p = urlParams.get("wsUrl");
@@ -55,7 +55,7 @@ const WS_URL = (() => {
 const SESSION_STORAGE_KEY = `doudizhu:session:${tableId}`;
 const NAME_STORAGE_KEY = "doudizhu:name";
 
-let mySeatIndex = initialSeatIndex;
+let mySeatIndex = null;
 let sessionToken = readStoredToken();
 let playerName = resolveInitialName();
 let currentTurnToken = null;
@@ -72,8 +72,6 @@ let reconnectDelayMs = 1000;
 let closedByClient = false;
 
 function resolveInitialName() {
-	const fromUrl = (urlParams.get("name") || "").trim().slice(0, 20);
-	if (fromUrl) return fromUrl;
 	try {
 		const stored = (localStorage.getItem(NAME_STORAGE_KEY) || "").trim().slice(0, 20);
 		if (stored) return stored;
@@ -83,11 +81,6 @@ function resolveInitialName() {
 	return "";
 }
 
-function parseOptionalInt(v) {
-	if (v === null || v === "") return null;
-	const n = Number.parseInt(v, 10);
-	return Number.isNaN(n) ? null : n;
-}
 
 function readStoredToken() {
 	try {
@@ -369,11 +362,10 @@ function handleServerMessage(msg) {
 		case "session":
 			if (typeof msg.seatIndex === "number") {
 				mySeatIndex = msg.seatIndex;
-				updateAddressBar(mySeatIndex);
 			}
 			if (msg.sessionToken) {
 				sessionToken = msg.sessionToken;
-				writeStoredToken({ sessionToken, seatIndex: mySeatIndex });
+				writeStoredToken({ sessionToken });
 			}
 			setStatus("Connected.", "ok");
 			return;
@@ -402,15 +394,6 @@ function handleServerMessage(msg) {
 	}
 }
 
-function updateAddressBar(seatIndex) {
-	try {
-		const params = new URLSearchParams(location.search);
-		params.set("seatIndex", String(seatIndex));
-		history.replaceState({}, "", `${location.pathname}?${params.toString()}`);
-	} catch {
-		// ignore
-	}
-}
 
 function openSocket() {
 	if (!tableId) {
@@ -426,7 +409,6 @@ function openSocket() {
 			tableId,
 			name: playerName,
 		};
-		if (typeof mySeatIndex === "number") payload.seatIndex = mySeatIndex;
 		if (sessionToken) payload.sessionToken = sessionToken;
 		sendSocketMessage(payload);
 	});
@@ -653,6 +635,8 @@ function promptForName() {
 }
 
 /* ---------------- boot ---------------- */
+
+initServiceWorker({ useServiceWorker: false });
 
 async function boot() {
 	wireShareBar();

@@ -43,10 +43,6 @@
 					<span>Table ID</span>
 					<input id="table-id-input" type="text" placeholder="abc123">
 				</label>
-				<label>
-					<span>Seat (optional)</span>
-					<input id="seat-input" type="number" min="0" max="5" placeholder="auto">
-				</label>
 				<button id="join-button" type="button">Join</button>
 			</div>
 
@@ -57,12 +53,14 @@
 	</footer>
 
 	<script type="module">
+		import { initServiceWorker } from "./js/serviceWorkerRegistration.js";
+		initServiceWorker({ useServiceWorker: false });
+
 		const wsInput = document.getElementById("ws-url-input");
 		const nameInput = document.getElementById("name-input");
 		const createBtn = document.getElementById("create-button");
 		const joinBtn = document.getElementById("join-button");
 		const tableIdInput = document.getElementById("table-id-input");
-		const seatInput = document.getElementById("seat-input");
 		const statusEl = document.getElementById("landing-status");
 
 		// Default to the hosted Render backend. Local dev can still override by typing
@@ -75,12 +73,8 @@
 			statusEl.textContent = text;
 		}
 
-		function buildSeatUrl({ tableId, seatIndex, name, wsUrl }) {
+		function buildSeatUrl({ tableId, wsUrl }) {
 			const params = new URLSearchParams({ tableId });
-			if (typeof seatIndex === "number" && Number.isInteger(seatIndex)) {
-				params.set("seatIndex", String(seatIndex));
-			}
-			if (name) params.set("name", name);
 			if (wsUrl) params.set("wsUrl", wsUrl);
 			return `${location.origin}${location.pathname.replace(/index\.html$/, "")}remoteTable.html?${params.toString()}`;
 		}
@@ -117,7 +111,6 @@
 						// Host enters the room immediately.
 						gotoSeat({
 							tableId: msg.tableId,
-							name,
 							wsUrl: wsInput.value.trim(),
 						});
 					} else if (msg.type === "error") {
@@ -135,22 +128,8 @@
 				setStatus("Enter a table ID.");
 				return;
 			}
-			const seatRaw = seatInput.value.trim();
-			let seatIndex = null;
-			if (seatRaw !== "") {
-				const parsed = Number.parseInt(seatRaw, 10);
-				if (Number.isNaN(parsed)) {
-					setStatus("Seat must be a number or left empty for auto-assign.");
-					return;
-				}
-				seatIndex = parsed;
-			}
-			const name = (nameInput.value || "Player").trim();
-			localStorage.setItem("doudizhu:name", name);
 			gotoSeat({
 				tableId,
-				seatIndex,
-				name,
 				wsUrl: wsInput.value.trim(),
 			});
 		});
