@@ -16,6 +16,7 @@ const notifEl = document.getElementById("notification");
 const lastMoveEl = document.getElementById("last-move");
 const kittyEl = document.getElementById("kitty");
 const phaseEl = document.getElementById("phase-indicator");
+const myAreaEl = document.querySelector(".my-area");
 const myHandEl = document.getElementById("my-hand");
 const meNameEl = document.getElementById("me-name");
 const meRoleEl = document.getElementById("me-role");
@@ -187,6 +188,12 @@ function applyState(state) {
 			: "";
 		meScoreEl.textContent = `(score ${myPublic?.score ?? 0})`;
 		renderHand(myHandEl, me.hand, selected, toggleCard);
+		const myTurn = state.table.turnSeatIndex === me.seatIndex ||
+			state.table.bidTurnSeatIndex === me.seatIndex;
+		myAreaEl?.classList.toggle("turn", myTurn);
+		myAreaEl?.classList.toggle("landlord", state.table.landlordSeatIndex === me.seatIndex);
+	} else {
+		myAreaEl?.classList.remove("turn", "landlord");
 	}
 
 	renderLastMove(lastMoveEl, state.table.lastMove, seatNameByIndex);

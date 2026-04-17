@@ -284,15 +284,18 @@ body#doudizhu-table[data-player-count="3"] .ddz-table {
 	gap: 6px;
 	box-shadow: var(--shadow);
 	border: 2px solid transparent;
-	transition: border-color 0.2s ease;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.opponent.turn {
+/* Landlord gets a yellow border. Current turn fills the whole panel green so name / score /
+   hand-count all shift — a stronger cue than a border alone. Both cues coexist when the
+   landlord is on turn. */
+.opponent.landlord {
 	border-color: var(--yellow);
 }
 
-.opponent.landlord {
-	background: linear-gradient(to bottom, var(--blue-darker), hsl(221, 39%, 27%));
+.opponent.turn {
+	background: var(--green);
 }
 
 .opponent-N {
@@ -441,6 +444,16 @@ body#doudizhu-table[data-player-count="3"] .ddz-table {
 	flex-direction: column;
 	align-items: center;
 	gap: 10px;
+	border: 2px solid transparent;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.my-area.landlord {
+	border-color: var(--yellow);
+}
+
+.my-area.turn {
+	background: var(--green);
 }
 
 .me-info {
