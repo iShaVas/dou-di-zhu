@@ -1,5 +1,21 @@
 // Rendering helpers for the Dou Di Zhu table. Pure DOM, given state + refs.
 
+const RANK_ORDER = ["3","4","5","6","7","8","9","10","J","Q","K","A","2","sj","bj"];
+
+function cardRank(code) {
+	const hash = code.indexOf("#");
+	const base = hash === -1 ? code : code.slice(0, hash);
+	if (base === "sj" || base === "bj") return base;
+	return base.slice(0, -1); // strip suit
+}
+
+function cardsText(cards) {
+	return [...cards]
+		.sort((a, b) => RANK_ORDER.indexOf(cardRank(a)) - RANK_ORDER.indexOf(cardRank(b)))
+		.map(cardRank)
+		.join("");
+}
+
 export function cardSrc(cardCode) {
 	// Cards dealt by the server may carry a "#<n>" instance suffix (e.g. "4D#17"); the SVG asset
 	// is named by the base code alone.
@@ -33,28 +49,66 @@ export function renderHand(handEl, cardZOrder, cardPositions, selectedSet) {
 	}
 }
 
-export function renderLastMove(lastMoveEl, lastMove, seatNameByIndex) {
-	lastMoveEl.innerHTML = "";
-	if (!lastMove) {
-		lastMoveEl.classList.add("empty");
-		lastMoveEl.textContent = "— free round —";
-		return;
+export function renderTurnHistory(el, turnHistory, seatNameByIndex) {
+	el.innerHTML = "";
+	if (!turnHistory || turnHistory.length === 0) return;
+
+	// Left: text log of all moves this trick.
+	const log = document.createElement("div");
+	log.className = "turn-history-log";
+	for (const entry of turnHistory) {
+		const row = document.createElement("div");
+		row.className = "turn-history-entry";
+		const name = document.createElement("span");
+		name.className = "turn-history-name";
+		name.textContent = seatNameByIndex.get(entry.seatIndex) ?? `Seat ${entry.seatIndex + 1}`;
+		row.appendChild(name);
+		const detail = document.createElement("span");
+		if (entry.action === "pass") {
+			detail.className = "turn-history-pass";
+			detail.textContent = "passed";
+			row.appendChild(detail);
+		} else {
+			// Text fallback (mobile).
+			detail.className = "turn-history-play";
+			detail.textContent = cardsText(entry.cards);
+			row.appendChild(detail);
+			// Mini card images (desktop/tablet).
+			const sorted = [...entry.cards].sort(
+				(a, b) => RANK_ORDER.indexOf(cardRank(a)) - RANK_ORDER.indexOf(cardRank(b))
+			);
+			const miniCards = document.createElement("div");
+			miniCards.className = "turn-history-mini-cards";
+			for (const code of sorted) {
+				const img = document.createElement("img");
+				img.src = cardSrc(code);
+				img.alt = cardRank(code);
+				img.className = "turn-history-mini-card";
+				miniCards.appendChild(img);
+			}
+			row.appendChild(miniCards);
+		}
+		log.appendChild(row);
 	}
-	lastMoveEl.classList.remove("empty");
-	const header = document.createElement("div");
-	header.className = "last-move-header";
-	header.textContent = `${seatNameByIndex.get(lastMove.seatIndex) ?? `Seat ${lastMove.seatIndex + 1}`} played ${lastMove.type.replace(/_/g, " ")}`;
-	lastMoveEl.appendChild(header);
-	const row = document.createElement("div");
-	row.className = "last-move-cards";
-	for (const code of lastMove.cards) {
-		const img = document.createElement("img");
-		img.src = cardSrc(code);
-		img.alt = code;
-		img.className = "played-card";
-		row.appendChild(img);
+	el.appendChild(log);
+
+	// Center: big card images of the most recent play only (no header text).
+	const lastPlay = [...turnHistory].reverse().find((e) => e.action === "play");
+	if (lastPlay) {
+		const main = document.createElement("div");
+		main.className = "turn-history-main";
+		const cardRow = document.createElement("div");
+		cardRow.className = "last-move-cards";
+		for (const code of lastPlay.cards) {
+			const img = document.createElement("img");
+			img.src = cardSrc(code);
+			img.alt = code;
+			img.className = "played-card";
+			cardRow.appendChild(img);
+		}
+		main.appendChild(cardRow);
+		el.appendChild(main);
 	}
-	lastMoveEl.appendChild(row);
 }
 
 export function renderKitty(kittyEl, kitty) {

@@ -173,27 +173,16 @@ body#landing main {
 	z-index: 50;
 }
 
-.share-bar-label {
+.share-bar-phase {
+	flex: 1;
 	font-size: 13px;
 	color: var(--blue-lightest);
-	flex-shrink: 0;
-}
-
-.share-bar input {
-	flex: 1;
-	min-width: 0;
-	padding: 6px 10px;
-	border-radius: 4px;
-	border: 1px solid var(--blue-lighter);
-	background: var(--blue);
-	color: var(--font-color);
-	font-family: monospace;
-	font-size: 13px;
 }
 
 .share-bar button {
 	padding: 6px 12px;
 	font-size: 13px;
+	flex-shrink: 0;
 }
 
 /* =========================
@@ -484,28 +473,62 @@ body#doudizhu-table[data-player-count="4"] #kitty {
 	color: var(--blue-lightest);
 }
 
-.notification {
-	font-size: 15px;
-	text-align: center;
-	max-width: 90%;
+
+.turn-history {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 12px;
+	min-height: 100px;
+	width: 100%;
 }
 
-.last-move {
+.turn-history-log {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	min-height: 120px;
+	gap: 4px;
+	flex-shrink: 0;
 }
 
-.last-move.empty {
+.turn-history-entry {
+	display: flex;
+	gap: 6px;
+	font-size: 12px;
+}
+
+.turn-history-name {
+	color: var(--yellow);
+	font-weight: bold;
+}
+
+.turn-history-pass {
 	color: var(--blue-lightest);
 	font-style: italic;
 }
 
-.last-move-header {
-	font-size: 13px;
-	color: var(--yellow);
+
+.turn-history-play {
+	color: var(--blue-lightest);
+	display: none;
+}
+
+.turn-history-mini-cards {
+	display: flex;
+	gap: 1px;
+}
+
+.turn-history-mini-card {
+	width: 26px;
+	height: 36px;
+	border-radius: 2px;
+	box-shadow: var(--shadow);
+	background: white;
+}
+
+.turn-history-main {
+	flex: 1;
+	display: flex;
+	justify-content: center;
 }
 
 .last-move-cards {
@@ -731,5 +754,25 @@ body#doudizhu-table[data-player-count="4"] #kitty {
 	.kitty-card {
 		width: 28px;
 		height: 40px;
+	}
+
+	.turn-history {
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.turn-history-log {
+		position: absolute;
+		top: 8px;
+		left: 8px;
+		align-items: flex-start;
+	}
+
+	.turn-history-play {
+		display: inline;
+	}
+
+	.turn-history-mini-cards {
+		display: none;
 	}
 }

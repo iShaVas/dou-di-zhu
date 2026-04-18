@@ -7,14 +7,12 @@ import {
 	clearOpponent,
 	renderHand,
 	renderKitty,
-	renderLastMove,
-	renderNotification,
+	renderTurnHistory,
 	renderOpponent,
 } from "./shared/tableViewRenderer.js";
 
 const body = document.body;
-const notifEl = document.getElementById("notification");
-const lastMoveEl = document.getElementById("last-move");
+const turnHistoryEl = document.getElementById("turn-history");
 const kittyEl = document.getElementById("kitty");
 const phaseEl = document.getElementById("phase-indicator");
 const myAreaEl = document.querySelector(".my-area");
@@ -29,7 +27,6 @@ const playBtn = document.getElementById("play-button");
 const passBtn = document.getElementById("pass-button");
 const resetSelectionBtn = document.getElementById("reset-selection-button");
 const connectionStatusEl = document.getElementById("connection-status");
-const shareLinkEl = document.getElementById("share-link");
 const shareCopyBtn = document.getElementById("share-copy");
 const confirmDialogEl = document.getElementById("confirm-dialog");
 const confirmMessageEl = document.getElementById("confirm-dialog-message");
@@ -175,9 +172,13 @@ function reconcilePositions(serverHand, handNumber) {
 			cardZOrder = cardZOrder.filter((c) => c !== code);
 		}
 	}
-	// Add newly dealt cards (shouldn't happen mid-hand, but handle it)
+	// New cards added mid-hand (kitty pickup): reset and re-layout the full hand.
 	const newCards = serverHand.filter((c) => !cardPositions.has(c));
-	if (newCards.length > 0) defaultLayout(sortHand(newCards));
+	if (newCards.length > 0) {
+		cardPositions = new Map();
+		cardZOrder = [];
+		defaultLayout(sortHand(serverHand));
+	}
 }
 
 const selectRectEl = document.createElement("div");
@@ -253,9 +254,8 @@ function applyState(state) {
 		myAreaEl?.classList.remove("turn", "landlord");
 	}
 
-	renderLastMove(lastMoveEl, state.table.lastMove, seatNameByIndex);
+	renderTurnHistory(turnHistoryEl, state.table.turnHistory, seatNameByIndex);
 	renderKitty(kittyEl, state.table.kitty);
-	renderNotification(notifEl, state.table.notifications, "");
 
 	phaseEl.textContent = `Phase: ${state.table.phase} · Hand ${state.table.handNumber}`;
 	currentTurnToken = me?.turnToken ?? null;
@@ -274,12 +274,11 @@ function applyState(state) {
 function placeOpponents(playersPublic, tableView) {
 	const myIdx = mySeatIndex ?? 0;
 	const playerCount = playersPublic.length;
-	// Order opponents clockwise starting from the seat to my left.
-	const ordered = [];
-	for (let offset = 1; offset < playerCount; offset++) {
-		const idx = (myIdx + offset) % playerCount;
-		ordered.push(playersPublic.find((p) => p.seatIndex === idx));
-	}
+	// Order opponents clockwise by seat distance from me (modulo maxSeats=4, not playerCount,
+	// so gaps from kicked players don't map the wrong seats to the wrong slots).
+	const ordered = playersPublic
+		.filter((p) => p.seatIndex !== myIdx)
+		.sort((a, b) => ((a.seatIndex - myIdx + 4) % 4) - ((b.seatIndex - myIdx + 4) % 4));
 	// Assign to slots: 2P → [E] (single opponent), 3P → [W, E] (flanking), 4P → [W, N, E].
 	const slotOrder = playerCount === 4 ? ["W", "N", "E"] : playerCount === 3 ? ["W", "E"] : ["E"];
 	// Clear all
@@ -381,11 +380,11 @@ function handleServerMessage(msg) {
 			if (msg.code === "kicked") {
 				closedByClient = true;
 				socket?.close();
-				notifEl.textContent = "You were kicked from the table.";
+				setStatus("You were kicked from the table.", "warn");
 				setStatus("", "");
 				return;
 			}
-			notifEl.textContent = `Server: ${msg.message ?? msg.code}`;
+			setStatus(`Error: ${msg.message ?? msg.code}`, "warn");
 			return;
 		case "pong":
 			return;
@@ -397,7 +396,7 @@ function handleServerMessage(msg) {
 
 function openSocket() {
 	if (!tableId) {
-		notifEl.textContent = "Missing tableId in URL.";
+		setStatus("Missing table ID.", "warn");
 		return;
 	}
 	setStatus("Connecting…", "info");
@@ -583,10 +582,8 @@ function computeShareUrl() {
 }
 
 function wireShareBar() {
-	if (!shareLinkEl || !tableId) return;
+	if (!shareCopyBtn || !tableId) return;
 	const url = computeShareUrl();
-	shareLinkEl.value = url;
-	if (!shareCopyBtn) return;
 	shareCopyBtn.addEventListener("click", async () => {
 		try {
 			await navigator.clipboard.writeText(url);
@@ -594,8 +591,7 @@ function wireShareBar() {
 			shareCopyBtn.textContent = "Copied!";
 			setTimeout(() => (shareCopyBtn.textContent = original), 1500);
 		} catch {
-			shareLinkEl.select();
-			shareLinkEl.setSelectionRange(0, 99999);
+			prompt("Copy this invite link:", url);
 		}
 	});
 }
@@ -641,10 +637,8 @@ initServiceWorker({ useServiceWorker: false });
 async function boot() {
 	wireShareBar();
 	if (!playerName) {
-		notifEl.textContent = "Waiting for your name…";
 		playerName = await promptForName();
 	}
-	notifEl.textContent = "Loading table…";
 	openSocket();
 }
 

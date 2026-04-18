@@ -40,9 +40,8 @@
 
 	<header class="share-bar">
 		<div id="connection-status" class="connection-status hidden"></div>
-		<span class="share-bar-label">Share this link:</span>
-		<input id="share-link" type="text" readonly>
-		<button id="share-copy" type="button">Copy</button>
+		<div id="phase-indicator" class="phase-indicator share-bar-phase"></div>
+		<button id="share-copy" type="button">Copy the invite link</button>
 	</header>
 
 	<main class="ddz-table">
@@ -70,9 +69,7 @@
 
 		<div class="table-center">
 			<div id="kitty" class="kitty hidden"></div>
-			<div id="last-move" class="last-move"></div>
-			<div id="notification" class="notification">Connecting…</div>
-			<div id="phase-indicator" class="phase-indicator"></div>
+			<div id="turn-history" class="turn-history"></div>
 		</div>
 
 		<section class="my-area">
